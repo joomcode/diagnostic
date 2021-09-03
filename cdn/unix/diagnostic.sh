@@ -11,23 +11,39 @@ OUT=`mktemp -d`
 uname -v | tee "$OUT/ver.txt"
 # Network configuration
 ifconfig | tee "$OUT/ifconfig.txt"
+
+route > "$OUT/route.txt"
+dig @resolver1.opendns.com myip.opendns.com. > "$OUT/dns.myip.txt"
+
 # Geo DNS resolution
 dig img.joomcdn.net | tee "$OUT/dns.geo.txt"
 
 # G-Core diagnostic
-curl --connect-timeout 30 http://iam.gcdn.co/info -o $OUT/gcore.txt 2> $OUT/gcore.err
-curl --connect-timeout 30 https://ifconfig.co/json -o $OUT/external_ip.txt 2> $OUT/external_ip.err
+curl --connect-timeout 30 http://iam.gcdn.co/info -v -o "$OUT/gcore.txt" 2> "$OUT/gcore.err"
+curl --connect-timeout 30 https://ifconfig.co/json -v -o "$OUT/external_ip.txt" 2> "$OUT/external_ip.err"
 
 # Check CDN providers
 for i in ${CDN[*]}; do
   # DNS resolution
   dig img-$i.joomcdn.net | tee "$OUT/dns.$i.txt"
   # Try download image
-  curl --connect-timeout 30 -v -o $OUT/cat.${i}_https.jpg https://img-${i}.joomcdn.net/$CAT > $OUT/cat.${i}_https.txt 2>&1
-  curl --connect-timeout 30 -v -o $OUT/cat.${i}_http.jpg  http://img-${i}.joomcdn.net/$CAT  > $OUT/cat.${i}_http.txt  2>&1
+  curl --connect-timeout 30 -v -o "$OUT/cat.${i}_https.jpg" "https://img-${i}.joomcdn.net/$CAT" > "$OUT/cat.${i}_https.txt" 2>&1
+  curl --connect-timeout 30 -v -o "$OUT/cat.${i}_http.jpg"  "http://img-${i}.joomcdn.net/$CAT"  > "$OUT/cat.${i}_http.txt"  2>&1
   # Trace routing
   traceroute -w 1 img-$i.joomcdn.net | tee "$OUT/trace.$i.txt"
 done
+
+# G-Core specific diagnostics
+dig iam.gcdn.co | tee "$OUT/dns.gcdn.txt"
+dig o-o.myaddr.l.google.com TXT | tee "$OUT/dns.txt-myadd-isp.txt"
+dig o-o.myaddr.l.google.com TXT @8.8.8.8 | tee "$OUT/dns.txt-myadd-gdns.txt"
+dig dns-debug.d.gcdn.co TXT | tee "$OUT/dns.txt-gcdn.txt"
+dig d.gcdn.co | tee "$OUT/dns.gcdn-isp.txt"
+dig d.gcdn.co @8.8.8.8 | tee "$OUT/dns.gcdn-gdns.txt"
+dig d.gcdn.co @92.223.100.100 | tee "$OUT/dns.gcdn-gcore.txt"
+traceroute -w 1 92.223.100.200 | tee "$OUT/trace.gcore.txt"
+ping -c5 d.gcdn.co | tee "$OUT/ping.gcdn.txt"
+traceroute -w 1 d.gcdn.co | tee "$OUT/trace.gcdn.txt"
 
 # Create archive with generated report
 REP=`mktemp -d`
