@@ -7,16 +7,20 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"html/template"
+	html_template "html/template"
 	"io"
 	"runtime"
 	"sort"
 	"sync"
+	text_template "text/template"
 	"time"
 )
 
 //go:embed report.gohtml
-var reportTemplate string
+var reportTemplateHTML string
+
+//go:embed report.gotpl
+var reportTemplateMarkdown string
 
 type Attachment []byte
 
@@ -50,9 +54,21 @@ func (r *Report) CreateAttachment(name string, content []byte) {
 }
 
 func (r *Report) GenerateHtml() ([]byte, error) {
-	tmpl, err := template.New("report").Parse(reportTemplate)
+	tmpl, err := html_template.New("report").Parse(reportTemplateHTML)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("can't parse report.gohtml: %v", err))
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, r); err != nil {
+		return nil, errors.New(fmt.Sprintf("can't render report: %v", err))
+	}
+	return buf.Bytes(), nil
+}
+
+func (r *Report) GenerateMarkdown() ([]byte, error) {
+	tmpl, err := text_template.New("report").Parse(reportTemplateMarkdown)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("can't parse report.gotpl: %v", err))
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, r); err != nil {
@@ -67,6 +83,12 @@ func (r *Report) generateAttachments() (map[string]Attachment, error) {
 		return nil, err
 	} else {
 		attachments["report.html"] = report
+		fmt.Println(string(report))
+	}
+	if report, err := r.GenerateMarkdown(); err != nil {
+		return nil, err
+	} else {
+		attachments["report.md"] = report
 		fmt.Println(string(report))
 	}
 
