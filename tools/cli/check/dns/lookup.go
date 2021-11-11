@@ -2,12 +2,13 @@ package dns
 
 import (
 	"context"
-	"github.com/joomcode/diagnostic/tools/cli/logger"
-	"github.com/miekg/dns"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joomcode/diagnostic/tools/cli/logger"
+	"github.com/miekg/dns"
 )
 
 func SystemLookupHost(ctx context.Context, log logger.Logger, host string) ([]net.IP, error) {

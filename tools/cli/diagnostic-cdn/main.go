@@ -2,14 +2,35 @@ package main
 
 import (
 	"context"
-	"github.com/joomcode/diagnostic/tools/cli/check/dns"
-	_ "github.com/sirupsen/logrus"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/joomcode/diagnostic/tools/cli/check/dns"
+	"github.com/joomcode/diagnostic/tools/cli/report"
+	"github.com/sirupsen/logrus"
+	_ "github.com/sirupsen/logrus"
 )
 
 type FoundIP struct {
 	IP   net.IP
 	Tags []string
+}
+
+func contextWithSignalHandler() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT)
+	go func() {
+		sig := <-c
+		logrus.Warnf("Interrupted by signal: %v", sig)
+		cancel()
+		sig = <-c
+		logrus.Fatalf("Second signal received, forcing exit: %v", sig)
+	}()
+	return ctx
 }
 
 func main() {
@@ -77,9 +98,23 @@ fi
 echo "Report file $REP/report.tgz is successfully generated"
 `
 
-	ctx := context.Background()
+	ctx := contextWithSignalHandler()
 
 	task := dns.NewSystemLookupHostTask("img.joomcdn.net")
+
+	_ = task
+	_ = ctx
+
+	r := report.New()
+
+	f, err := os.Create("report.zip")
+	if err == nil {
+		defer f.Close()
+
+		if err := r.SaveReport(ctx, f); err != nil {
+			panic(err)
+		}
+	}
 
 	/*googleDNS := net.ParseIP("8.8.8.8")
 	gcoreDNS := net.ParseIP("92.223.100.100")
