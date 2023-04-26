@@ -4,6 +4,7 @@ set -x
 CAT=143277b4305cfcb23573b35ba9d26448e71d8eb4_100_100.jpeg
 CDN[0]=alt
 CDN[1]=amz
+CDN[2]=edg
 
 # Begin diagnostic
 OUT=`mktemp -d`
@@ -20,6 +21,7 @@ dig img.joomcdn.net | tee "$OUT/dns.geo.txt"
 
 # G-Core diagnostic
 curl --connect-timeout 30 http://iam.gcdn.co/info -v -o "$OUT/gcore.txt" 2> "$OUT/gcore.err"
+curl --connect-timeout 30 http://iam.edgecenter.ru/info -v -o "$OUT/edgecenter.txt" 2> "$OUT/edgecenter.err"
 curl --connect-timeout 30 https://ifconfig.co/json -v -o "$OUT/external_ip.txt" 2> "$OUT/external_ip.err"
 
 # Check CDN providers
